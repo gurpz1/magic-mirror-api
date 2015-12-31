@@ -24,13 +24,9 @@ public class FaceDetectorWebSocketHandler extends BinaryWebSocketHandler {
     public void handleBinaryMessage(WebSocketSession session, BinaryMessage message) throws Exception{
         _log.debug("Message Received");
 
-       try {
-           FaceDetector f = new FaceDetector();
-           BinaryMessage m = new BinaryMessage(f.convert(message.getPayload().array()));
-           session.sendMessage(m);
+        FaceDetector f = new FaceDetector();
+        BinaryMessage m = new BinaryMessage(f.convert(message.getPayload().array()));
+        session.sendMessage(m);
 
-       } catch (Exception e) {
-           _log.error("Unable to convert face: " + e.getMessage());
-       }
     }
 }
