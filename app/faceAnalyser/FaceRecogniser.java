@@ -4,6 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typesafe.config.ConfigFactory;
 import org.bytedeco.javacpp.BytePointer;
+import org.bytedeco.javacpp.indexer.Indexer;
+import org.bytedeco.javacpp.indexer.IntBufferIndexer;
+import org.bytedeco.javacpp.indexer.IntIndexer;
+import org.bytedeco.javacpp.indexer.UByteBufferIndexer;
 import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacpp.opencv_face;
 import org.bytedeco.javacv.OpenCVFrameConverter;
@@ -70,11 +74,11 @@ public class FaceRecogniser {
         // initialise buffers
         opencv_core.MatVector imagesToAnalyse = new opencv_core.MatVector(totalImagesOnDisk);
         opencv_core.Mat faceLabels = new opencv_core.Mat(totalImagesOnDisk,1, CV_32SC1);
-        //IntBuffer faceLabelBuffer = faceLabels.getIntBuffer();
+        IntBufferIndexer faceLabelIndex = faceLabels.createIndexer();
+
 
         int faceCounter = 0;
         int faceLabel = 0;
-
         for(File dir:faceDirs) {
             Logger.info("Loading " + dir.getName() + ", label = " + faceLabel);
             // get all the images in that directory and create a recogniser for them
@@ -90,7 +94,7 @@ public class FaceRecogniser {
                 imagesToAnalyse.put(faceCounter, image);
                 image.release();
                 // Add the associated label
-                //faceLabelBuffer.put(faceCounter, faceLabel);
+                faceLabelIndex.put(faceCounter,0,faceLabel);
                 faceCounter++;
             }
             // Need to associate the label to something humanly readable
@@ -100,7 +104,7 @@ public class FaceRecogniser {
 
         // Finally carry out the analysis
         Logger.debug("Started training");
-        faceRecognizer.train(imagesToAnalyse, faceLabels);
+        faceRecognizer.train(imagesToAnalyse,faceLabels);
         Logger.debug("Successfully trained");
 
         // Save the data for later use

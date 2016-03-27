@@ -28,7 +28,7 @@ public class Application extends Controller {
     private static FaceRecogniser f = new FaceRecogniser();
 
     public static Result index() {
-        return ok(index.render("Your new  is ready."));
+        return ok(index.render("Your new app is ready."));
     }
 
     /**
