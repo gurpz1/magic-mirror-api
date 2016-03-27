@@ -1,23 +1,20 @@
 package faceAnalyser;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.typesafe.config.ConfigFactory;
+import org.bytedeco.javacv.OpenCVFrameConverter;
 import play.Logger;
 
-import com.sun.glass.ui.Application;
 import org.bytedeco.javacpp.BytePointer;
-import org.bytedeco.javacpp.Loader;
-import play.api.Configuration;
-import play.api.Play;
-
 
 import static org.bytedeco.javacpp.helper.opencv_objdetect.cvHaarDetectObjects;
 import static org.bytedeco.javacpp.opencv_core.*;
-import static org.bytedeco.javacpp.opencv_imgcodecs.cvDecodeImage;
-import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
+import static org.bytedeco.javacpp.opencv_core.cvCreateImage;
+import static org.bytedeco.javacpp.opencv_imgcodecs.*;
 import static org.bytedeco.javacpp.opencv_imgproc.*;
 import static org.bytedeco.javacpp.opencv_objdetect.*;
 
@@ -67,7 +64,7 @@ public class FaceDetector {
      * @param minsize
      * @return
      */
-    private CvSeq getFaces(IplImage image, double scale, int group, int minsize) {
+    public CvSeq getFaces(IplImage image, double scale, int group, int minsize) {
 
         // convert to grayscale
         IplImage grayImg = IplImage.create(image.width(),image.height(), IPL_DEPTH_8U, 1);
@@ -85,6 +82,39 @@ public class FaceDetector {
         return ret;
     }
 
+    /**
+     * Extracts all the faces from an image
+     * @param imageData
+     * @return
+     */
+    public List<byte[]> exportFaces(byte[] imageData) throws IOException {
+
+        List<byte[]> ret = new ArrayList<>();
+
+        IplImage originalImage = cvDecodeImage(cvMat(1, imageData.length, CV_8UC1, new BytePointer(imageData)));
+
+        CvSeq faces = getFaces(originalImage, SCALE, GROUP, MIN_SIZE);
+
+        for(int i=0; i<faces.total(); i++) {
+            CvRect r = new CvRect(cvGetSeqElem(faces, i));
+            // Set the region of interest in the image
+            cvSetImageROI(originalImage, r);
+
+            IplImage cropped = cvCreateImage(cvGetSize(originalImage), originalImage.depth(), originalImage.nChannels());
+            // Copy original image (only ROI) to the cropped image
+            cvCopy(originalImage, cropped);
+
+            // convert the resulting image back to an array
+            // Ensure that the exported faces are all the same size
+            IplImage resized = cvCreateImage(cvSize(200,200),originalImage.depth(), originalImage.nChannels());
+            cvResize(cropped, resized);
+            ret.add(Utils.iplImageToBytes(resized));
+
+            resized.release();
+            cropped.release();
+        }
+        return ret;
+    }
 
     /**
      * Draws a yellow rectangle around the faces
@@ -107,9 +137,7 @@ public class FaceDetector {
         }
 
         // convert the resulting image back to an array
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        bout.write(originalImage.asByteBuffer().array());
-        return bout.toByteArray();
+        return Utils.iplImageToBytes(originalImage);
     }
 
     /**

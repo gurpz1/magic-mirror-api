@@ -7,8 +7,8 @@ GET     /                           controllers.Application.index
 POST    /faces/count                controllers.Application.countFaces
 PUT     /faces/train/:id            controllers.Application.trainFace(id: String)
 POST    /faces/train                controllers.Application.trainAll
+POST    /faces/whoami               controllers.Application.whoami
+OPTIONS /*all                       controllers.Application.preflight(all)
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
-
-    

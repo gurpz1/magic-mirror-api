@@ -17,6 +17,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.IntBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.bytedeco.javacpp.opencv_core.*;
@@ -26,6 +27,7 @@ import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
 import static org.bytedeco.javacpp.opencv_imgcodecs.CV_LOAD_IMAGE_GRAYSCALE;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_BGR2GRAY;
 import static org.bytedeco.javacpp.opencv_imgproc.cvCvtColor;
+import static org.bytedeco.javacpp.opencv_imgproc.cvResize;
 
 
 /**
@@ -74,7 +76,7 @@ public class FaceRecogniser {
         int faceLabel = 0;
 
         for(File dir:faceDirs) {
-            Logger.info("Training " + dir.getName());
+            Logger.info("Loading " + dir.getName() + ", label = " + faceLabel);
             // get all the images in that directory and create a recogniser for them
             File[] faceImages = dir.listFiles(isImg);
 
@@ -97,16 +99,18 @@ public class FaceRecogniser {
         }
 
         // Finally carry out the analysis
+        Logger.debug("Started training");
         faceRecognizer.train(imagesToAnalyse, faceLabels);
+        Logger.debug("Successfully trained");
 
         // Save the data for later use
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            mapper.writerWithDefaultPrettyPrinter().writeValue(new File(ConfigFactory.load().getString("faces.recogniser.labels")), faceLabelToNameMap);
-            faceRecognizer.save(ConfigFactory.load().getString("faces.recogniser"));
-        } catch (IOException e) {
-            Logger.error("Unable to save down trained data");
-        }
+//        ObjectMapper mapper = new ObjectMapper();
+//        try {
+//            mapper.writerWithDefaultPrettyPrinter().writeValue(new File(ConfigFactory.load().getString("faces.recogniser.labels")), faceLabelToNameMap);
+//            faceRecognizer.save(ConfigFactory.load().getString("faces.recogniser"));
+//        } catch (IOException e) {
+//            Logger.error("Unable to save down trained data");
+//        }
 
     }
 
@@ -116,13 +120,27 @@ public class FaceRecogniser {
      * @return Name if we find it
      */
     public String predict(byte[] imageData) {
-        IplImage originalImage = cvDecodeImage(cvMat(1, imageData.length, CV_8UC1, new BytePointer(imageData)));
-        OpenCVFrameConverter.ToMat conv = new OpenCVFrameConverter.ToMat();
-        IplImage gray = IplImage.create(originalImage.width(),originalImage.height(), IPL_DEPTH_8U, 1);
-        cvCvtColor(originalImage,gray, CV_BGR2GRAY);
-        OpenCVFrameConverter.ToIplImage ci = new OpenCVFrameConverter.ToIplImage();
-        Mat image = conv.convert(ci.convert(gray));
+        FaceDetector f = new FaceDetector();
+        try {
+            List<byte[]> faces = f.exportFaces(imageData);
+            if(faces.size() > 0) {
 
-        return faceLabelToNameMap.get(faceRecognizer.predict(image));
+                IplImage originalImage = cvDecodeImage(cvMat(1, faces.get(0).length, CV_8UC1, new BytePointer(faces.get(0))));
+                IplImage resized = cvCreateImage(cvSize(200,200),originalImage.depth(), originalImage.nChannels());
+                cvResize(originalImage, resized);
+                OpenCVFrameConverter.ToMat conv = new OpenCVFrameConverter.ToMat();
+                IplImage gray = IplImage.create(resized.width(),resized.height(), IPL_DEPTH_8U, 1);
+                cvCvtColor(resized,gray, CV_BGR2GRAY);
+                OpenCVFrameConverter.ToIplImage ci = new OpenCVFrameConverter.ToIplImage();
+                Mat image = conv.convert(ci.convert(gray));
+
+                return faceLabelToNameMap.get(faceRecognizer.predict(image));
+            }
+
+
+        } catch (IOException e) {
+
+        }
+        return "Not Found";
     }
 }

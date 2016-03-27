@@ -17,7 +17,7 @@ libraryDependencies ++= Seq(
   filters,
   "org.bytedeco" % "javacv" % "1.1",
   "org.bytedeco.javacpp-presets" % "opencv" % "3.0.0-1.1",
-  "org.bytedeco.javacpp-presets" % "opencv" % "3.0.0-1.1" classifier "windows-x86"
+  "org.bytedeco.javacpp-presets" % "opencv" % "3.0.0-1.1" classifier "macosx-x86_64"
 )
 
 unmanagedResourceDirectories in Test <+=  baseDirectory ( _ /"target/web/public/test" )  
